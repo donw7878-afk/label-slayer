@@ -26,6 +26,7 @@ import {
   type ProductUpsert,
 } from "../database/queries";
 import { lookupByBarcode, searchByName } from "./lookup";
+import { cleanProductName } from "./cleanup";
 import type { SlayProductInput, SlayResult } from "./types";
 
 export function slugify(text: string): string {
@@ -105,6 +106,7 @@ export async function slayProduct(
   const upsert: ProductUpsert = {
     slug: existing?.slug ?? slug,
     name: input.name,
+    name_raw: input.nameRaw ?? existing?.name_raw ?? null,
     brand: input.brand ?? null,
     category: input.category ?? null,
     subcategory: input.subcategory ?? null,
@@ -231,8 +233,14 @@ export async function slayByBarcode(barcode: string): Promise<SlayResult> {
     }
   }
 
+  // Fresh product from an external API: clean up the crowdsourced name before
+  // it becomes the stored name and the slug. Manual/admin input never lands
+  // here, so human-entered names are trusted as-is.
+  const cleanedName = await cleanProductName(lookup.name, lookup.brand ?? undefined);
+
   const { product, slayContent, fromCache } = await slayProduct({
-    name: lookup.name,
+    name: cleanedName,
+    nameRaw: lookup.name,
     brand: lookup.brand ?? undefined,
     category: lookup.category ?? undefined,
     subcategory: lookup.subcategory ?? undefined,

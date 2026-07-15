@@ -19,6 +19,8 @@ export interface ProductRow {
   id: string;
   slug: string;
   name: string;
+  /** Original external-API name before AI cleanup; null for manual entries. */
+  name_raw: string | null;
   brand: string | null;
   category: string | null;
   subcategory: string | null;

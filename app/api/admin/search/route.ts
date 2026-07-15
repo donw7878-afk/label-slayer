@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const { data, error } = await client
     .from("products")
     .select(
-      "id, slug, name, brand, category, score, verdict, verdict_label, slay_headline, status, reviewed_at, ingredients_raw",
+      "id, slug, name, name_raw, brand, category, score, verdict, verdict_label, slay_headline, status, reviewed_at, ingredients_raw",
     )
     .or(`slug.ilike.*${term}*,name.ilike.*${term}*,brand.ilike.*${term}*`)
     .order("name", { ascending: true })

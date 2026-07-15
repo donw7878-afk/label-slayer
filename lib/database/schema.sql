@@ -33,6 +33,9 @@ create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
   name text not null,
+  -- Original name from the external API, before AI cleanup. Null for
+  -- manual/admin-entered products (no cleanup applied).
+  name_raw text,
   brand text,
   category text,
   subcategory text,
@@ -65,6 +68,9 @@ create table if not exists public.products (
     setweight(to_tsvector('english', coalesce(ingredients_raw, '')), 'C')
   ) stored
 );
+
+-- name_raw was added after launch — for databases on the original schema.
+alter table public.products add column if not exists name_raw text;
 
 -- 'flagged-for-review' was added after launch — recreate the status check so
 -- databases created from the original schema pick it up. (create table if not

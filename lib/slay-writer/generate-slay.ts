@@ -1,14 +1,15 @@
 /**
  * The Slay Writer's engine room: calls the Claude API with the brand voice
- * system prompt and five locked few-shot examples, and returns typed
+ * system prompt and six locked few-shot examples, and returns typed
  * SlayContent.
  *
  * The few-shot examples below ARE the voice standard — adapted from real
- * brand voice samples (July 2026). Every slay the model writes gets measured
- * against them, so treat edits here like brand edits. They deliberately span
- * registers (35 through 92) and categories (beverage, bakery, dip, beauty,
- * coffee) so the voice holds everywhere. Each example's user message mirrors
- * the exact output of formatSlayInput — keep them in sync.
+ * brand voice samples (July 2026, v3 mixed intelligent-street voice). Every
+ * slay the model writes gets measured against them, so treat edits here like
+ * brand edits. They deliberately span registers (12 through 92) and categories
+ * (soda, sports drink, bakery, dip, beauty, coffee) so the voice holds
+ * everywhere. Each example's user message mirrors the exact output of
+ * formatSlayInput — keep them in sync.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -69,9 +70,9 @@ Generate the slay.`;
 const GATORADE_SLAY: SlayContent = {
   headline: "Lab juice with a sports contract.",
   summary:
-    "Alright, let's wring this one out. Two sugars deep before a single electrolyte shows up, a petroleum dye so it looks like limes were involved, and 'natural flavor' doing the job of actual fruit. You're not hydrating — you're sipping lab juice with fake color, synthetic electrolytes, and enough sugar to make your pancreas sweat.",
+    "Alright, let's wring this one out. Two sugars deep before a single electrolyte shows up, a petroleum dye so it looks like limes were involved, and 'natural flavor' doing the job of actual fruit. Bruh. You're not hydrating — you're sipping a six-percent sugar solution with fake color and a sports contract.",
   whyThisScore:
-    "Start at the top of the label: water, then sugar, then dextrose. Dextrose is glucose in a lab coat — so that's a double sugar dose stacked up front, split across two names so neither one has to sit in the number-two spot alone. In a drink whose entire pitch is health. The hidden-sugar penalty exists for exactly this move.\n\nThen the costume department. Yellow 5 is a petroleum-derived dye that exists so the drink reads 'lemon-lime' to your eyeballs, because nothing else on the label will say it — there is no lemon and no lime in this lemon-lime, just 'natural flavor' shipped in from a flavor house. The electrolytes the bottle brags about are sodium citrate and monopotassium phosphate, lab salts your body was never introduced to. Real salt comes with sixty-plus trace minerals. This comes with a patent vibe.\n\nReal talk: you don't need this unless you're a sweaty linebacker in the fourth quarter of a summer game. For everyone else, it's a soft drink with an athletic department. Water, real fruit, and a pinch of actual mineral salt cover everything this bottle promises, without the dye.",
+    "Start at the top of the label: water, then sugar, then dextrose. Dextrose is glucose in a lab coat — chemically identical to blood sugar, which is why it hits your bloodstream with zero negotiation. Stack it on sucrose and you've got a double sugar dose split across two names so neither one has to sit in the number-two spot alone. In a drink whose entire pitch is health. That's not a formulation choice, that's a shell game.\n\nThen the costume department. Yellow 5 is a petroleum-derived azo dye that exists so the drink reads 'lemon-lime' to your eyeballs, because nothing else on the label will say it — there is no lemon and no lime in this lemon-lime, just 'natural flavor' shipped in from a flavor house. The electrolytes the bottle brags about are sodium citrate and monopotassium phosphate — lab salts with respectable solubility and none of the sixty-plus trace minerals that ride along with real mineral salt. Your body ordered minerals and got a patent instead. Nah.\n\nReal talk: electrolyte replacement is legitimate physiology for serious sweat loss — if you're deep in the fourth quarter of a summer two-a-day, this does a job. For everyone else, it's a soft drink with an athletic department. Water, real fruit, and a pinch of actual mineral salt cover everything this bottle promises, without the dye.",
   marketingSays:
     "'Thirst Quencher' and 'Electrolytes to Help Replace What You Sweat Out.' They're selling you your own sweat back — with two sugars and a refinery color as the delivery fee.",
   labelSays:
@@ -166,9 +167,9 @@ Generate the slay.`;
 const KETO_BUNS_SLAY: SlayContent = {
   headline: "Keto by math. Lab loaf by birth.",
   summary:
-    "Buckle up, keto fam. The carb count checks out — the chemistry is another story. Low-carb don't mean low-chemical, and this is a processed lab loaf dipped in preservatives and seed oil slime, wearing a 'Healthy Life' name tag like that settles it.",
+    "Buckle up, keto fam. The carb count checks out — the chemistry is another story. Seven of thirteen ingredients here are industrial additives, which makes this less a bread and more a formulation with crumbs. Low-carb don't mean low-chemical, and a 'Healthy Life' name tag doesn't settle it.",
   whyThisScore:
-    "The skeleton of this bun is modified wheat starch — wheat that's been processed so far past flour it legally needs a new name — held together with canola oil, the industrial seed oil that shows up wherever a manufacturer needs cheap fat that won't complain. That's the foundation. Everything else is maintenance.\n\nAnd the maintenance department is fully staffed: calcium propionate to keep mold away, sorbic acid as backup because apparently one preservative wasn't enough insurance on a bun, mono- and diglycerides to keep the crumb from separating, and sucralose to sweeten a bread that has no sugar to confess. This bun is preserved like it has somewhere to be in 2029. Bread your great-grandmother made went stale in two days, and that was the point — it was food.\n\nReal talk: if you're keto and you need a bun, this will technically do the job the macros promise. But 'keto certified' measures carbs, not quality — the certification doesn't know what canola oil is. There are cleaner ways to hit the same number, and most of them involve a mixing bowl.",
+    "The skeleton of this bun is modified wheat starch — wheat processed so far past flour it legally needs a new name, with most of its digestible carbohydrate stripped in the process. That's how a wheat product posts '2g net carbs': not baking, chemistry. It's held together with canola oil, the hexane-extracted industrial seed oil that shows up wherever a manufacturer needs cheap fat that won't complain.\n\nAnd the maintenance department is fully staffed: calcium propionate to keep mold away, sorbic acid as backup because apparently one preservative wasn't enough insurance on a bun, mono- and diglycerides to hold the crumb together — emulsifiers that can legally carry trans fats without declaring them, which is a labeling loophole, not a rumor — and sucralose to sweeten a bread with no sugar to confess. This bun is preserved like it has somewhere to be in 2029. Bread your great-grandmother made went stale in two days, and that was the point — it was food. What are we even doing here.\n\nReal talk: if you're keto and you need a bun, this will technically do the job the macros promise. But 'keto certified' measures carbs, not quality — the certification doesn't know what canola oil is. There are cleaner ways to hit the same number, and most of them involve a mixing bowl.",
   marketingSays:
     "'Keto Certified,' '2g Net Carbs,' and a brand literally named 'Healthy Life.' That's keto-washing — hit the macro, skip the food, and let the certification do the talking.",
   labelSays:
@@ -254,9 +255,9 @@ Generate the slay.`;
 const GUAC_SLAY: SlayContent = {
   headline: "Guac with nothing to confess.",
   summary:
-    "Alright, hand it over — let's see what Costco's hiding. Turns out: nothing. Zero seed oils, zero added sugars, and every flavor ingredient your abuela would've used if she had to mass-produce guacamole.",
+    "Alright, hand it over — let's see what Costco's hiding. Turns out: nothing. Zero seed oils, zero added sugars, and every flavor ingredient your abuela would've used if she had to mass-produce guacamole. Okay champ, we got a winner now.",
   whyThisScore:
-    "Read the list: organic avocados first and overwhelmingly, then real onion, jalapeño, lime, garlic, cilantro, salt. That's not an ingredient list, that's a recipe. The lime is doing double duty as flavor and preservation, which is how this was handled for a few thousand years before anyone invented a preservative aisle.\n\nThe two points off the top are citric acid — the only ingredient here with a lab coat, and its whole job is keeping the avocado green in transit. The rest of the deduction is just the reality of a factory dip: mashed and sealed at scale instead of in your kitchen. That's a ceiling, not a crime.\n\nReal talk: this is real food in a plastic tub. Organic produce, actual aromatics, and a preservation strategy that's mostly just lime with one lab assist. For store-bought guacamole at warehouse scale, it doesn't get much cleaner than this.",
+    "Read the list: organic avocados first and overwhelmingly, then real onion, jalapeño, lime, garlic, cilantro, salt. That's not an ingredient list, that's a recipe. The lime is doing double duty as flavor and acidification — dropping the pH to slow the enzyme that browns cut avocado — which is how this problem was solved for a few thousand years before anyone invented a preservative aisle.\n\nThe two points off the top are citric acid — the only ingredient here with a lab coat. It's produced by fermentation these days, not squeezed from lemons, and its whole job is backing up the lime on anti-browning duty. As lab assists go, this is about as benign as they come. The rest of the deduction is just the reality of a factory dip: mashed and sealed at scale instead of in your kitchen. That's a ceiling, not a crime.\n\nReal talk: this is real food in a plastic tub. Organic produce, actual aromatics, and a preservation strategy that's mostly just lime with one lab assist. For store-bought guacamole at warehouse scale, it doesn't get much cleaner than this.",
   marketingSays:
     "'Organic.' One claim, and for once the front of the package and the back are telling the same story.",
   labelSays:
@@ -322,9 +323,9 @@ Generate the slay.`;
 const SEKKISEI_SLAY: SlayContent = {
   headline: "A beautiful herbal recipe, mugged in the lab parking lot.",
   summary:
-    "Let's strip this one down — skincare labels play by the same rules as food labels, and this one's a tragedy in two acts. There's a genuinely solid herbal backbone here: Job's tears, angelica root, real plant extracts with centuries of receipts. Then somebody drowned it in alcohol, two parabens, a PEG, and mystery fragrance. It's like cooking a beautiful grass-fed steak and then dousing it in Axe body spray.",
+    "Let's strip this one down — skincare labels play by the same rules as food labels, and this one's a tragedy in two acts. There's a genuinely solid herbal backbone here: Job's tears, angelica root, real plant extracts with centuries of receipts. Then somebody drowned it in alcohol, two parabens, a PEG, and mystery fragrance. It's like cooking a beautiful grass-fed steak and then dousing it in Axe body spray. Miss me with that.",
   whyThisScore:
-    "Give credit first: the herbal core of this cream is real. Coix seed — Job's tears — and angelica root aren't marketing garnish; they're extracts with a long traditional track record for skin. If the label stopped there, this thing scores in the eighties.\n\nIt does not stop there. Alcohol is the third ingredient — there to make the cream feel weightless, achieved by drying the very skin the herbs came to help. Then the preservation is handled by a paraben double act, methylparaben and propylparaben, both carrying endocrine question marks and restrictions in multiple markets. PEG-40 helps everything absorb more deeply — including the things you'd rather stayed on the surface — and 'fragrance' is one word legally hiding a compound list longer than the one printed. Dimethicone smooths it all over so the mirror tells you it worked.\n\nReal talk: the plants in this jar deserve better management. If your skin tolerates it, you'll see a temporary glow — that's the silicone, not the herbs. There are herbal creams with modern preservation systems that deliver the same tradition without the 2003 chemistry.",
+    "Give credit first: the herbal core of this cream is real. Coix seed — Job's tears — and angelica root aren't marketing garnish; they're extracts with a long traditional track record for skin. If the label stopped there, this thing scores in the eighties.\n\nIt does not stop there. Alcohol is the third ingredient by weight — there to make the cream feel weightless, achieved by disrupting the lipid barrier of the very skin the herbs came to help. Preservation is handled by a paraben double act, methylparaben and propylparaben, both carrying endocrine question marks and restrictions in multiple markets. PEG-40 hydrogenated castor oil is a penetration enhancer — it improves the absorption of everything in the formula, which is impressive engineering and questionable judgment when the formula includes two flagged preservatives. And 'fragrance' is one word legally hiding a compound list longer than the one printed. Dimethicone smooths it all over so the mirror tells you it worked. That's crazy.\n\nReal talk: the plants in this jar deserve better management. If your skin tolerates it, you'll see a temporary glow — that's the silicone, not the herbs. There are herbal creams with modern preservation systems that deliver the same tradition without the 2003 chemistry.",
   marketingSays:
     "'Herbal Beauty Essence' and 'Translucent Skin.' The front sells you the garden. The back delivers the garden plus the chemical shed behind it.",
   labelSays:
@@ -404,9 +405,9 @@ Generate the slay.`;
 const BUSTELO_SLAY: SlayContent = {
   headline: "One ingredient. It's coffee. We're done here.",
   summary:
-    "Alright, this one's quick. The ingredient list says coffee. That's the list. No additives, no preservatives, no 'flavor system' — just beans roasted dark enough to mean it.",
+    "Alright, this one's quick. The ingredient list says coffee. That's the list. No additives, no preservatives, no 'flavor system' — just beans roasted dark enough to mean it. Okay, now we're talking.",
   whyThisScore:
-    "Single ingredient, and the front of the package and the back are in complete agreement — '100% Pure Coffee' is somehow both a marketing claim and a plain fact. The eight missing points are a ceiling, not a crime: conventional coffee is one of the more heavily sprayed crops on earth, and these beans carry that farming history. Organic certification is the only thing between this and the high nineties.\n\nReal talk: this is exactly what a coffee label should look like, at a price that doesn't require a second job. If it's your daily cup, organic shade-grown beans are a genuine upgrade worth the money. If it's not, drink this without a second thought.",
+    "Single ingredient, and the front of the package and the back are in complete agreement — '100% Pure Coffee' is somehow both a marketing claim and a plain fact. The eight missing points are a ceiling, not a crime: conventional coffee is one of the more pesticide-intensive crops on earth, grown in climates where fungus and insects work year-round, and these beans carry that farming history. Roasting degrades a lot of residue, which is the quiet mercy of the coffee aisle — but organic certification is still the only thing between this and the high nineties.\n\nReal talk: this is exactly what a coffee label should look like, at a price that doesn't require a second job. If it's your daily cup, organic shade-grown beans are a genuine upgrade worth the money. If it's not, drink this without a second thought.",
   marketingSays:
     "'Espresso Style' and '100% Pure Coffee.' Both just true. Refreshing, honestly.",
   labelSays: "Coffee. That's it. That's the label.",
@@ -419,10 +420,104 @@ const BUSTELO_SLAY: SlayContent = {
 };
 
 // ---------------------------------------------------------------------------
+// EXAMPLE 6 — Coca-Cola Classic (Score: 12, Toxic Trash)
+// The deep-trash register: cold, devastating, science doing the heavy lifting,
+// zingers landing like verdicts. The mixed-voice standard at full contrast.
+// ---------------------------------------------------------------------------
+
+const COCA_COLA_INPUT = `Product: Coca-Cola Classic
+Brand: Coca-Cola
+Category: Beverage / Soda
+Score: 12 / 100
+Verdict: Toxic Trash
+Processing Level: Ultra-Processed
+Is Organic: No
+
+Deduction Trail:
+- High Fructose Corn Syrup: -12 points — added sweetener as the first non-water ingredient (position-weighted)
+- Caramel Color: -8 points — synthetic coloring; certain manufacturing methods produce 4-MEI, flagged in several markets
+- Phosphoric Acid: -8 points — industrial acidulant linked to concerns for bone mineral density
+- Natural Flavors: -3 points — undisclosed flavoring compounds; the actual recipe is a trade secret
+- Caffeine: -4 points — isolated stimulant added to a sugar vehicle
+- Sweetener-vehicle penalty: -20 points — a sweetener leads the non-water ingredients; this is primarily a sugar-delivery vehicle
+- Processing level (ultra-processed): -12 points — formulated beverage built entirely from refined inputs
+- Product format (formulated beverage): -10 points — engineered drink, not a recognizable food
+- Additive density: -8 points — 5 of 6 ingredients are industrial
+- Complexity penalty: -3 points — formulation, not a recipe
+
+Flagged Ingredients (Red):
+- High Fructose Corn Syrup: enzymatically processed corn sweetener, first non-water ingredient
+- Caramel Color: synthetic coloring, 4-MEI concerns in some manufacturing methods
+- Phosphoric Acid: industrial acidulant, flagged for bone mineral density concerns
+
+Flagged Ingredients (Amber):
+- Natural Flavors: undisclosed flavoring compounds, trade-secret formulation
+- Caffeine: isolated added stimulant
+
+Front-of-Package Claims:
+- 'Original Taste'
+- 'Refreshing'
+
+Total Ingredients: 6
+Red Flags: 3
+Amber Flags: 2
+Sugar Aliases Found: 1
+Note: A sweetener leads the non-water ingredients — this product is primarily a sugar-delivery vehicle.
+
+Generate the slay.`;
+
+const COCA_COLA_SLAY: SlayContent = {
+  headline: "Liquid candy with a chemistry degree.",
+  summary:
+    "Now this right here is the blueprint — the original. A hundred and thirty years of marketing genius wrapped around six ingredients, five of them industrial. This ain't hydration. This is dessert pretending to be a beverage.",
+  whyThisScore:
+    "Let's crack this open. Water first, then high fructose corn syrup — corn enzymatically processed until it's sweeter than sugar and cheaper than dirt. One can delivers roughly 39 grams of it with zero fiber, zero protein, zero fat to slow the absorption curve. Your pancreas sees this stuff coming like it's an armed robbery. And because fructose is metabolized almost entirely in the liver, you're not just spiking blood sugar — you're turning your liver into an overtime employee.\n\nThen the supporting cast. Caramel color sounds like grandma's stovetop; it's a synthetic colorant, and certain manufacturing methods produce 4-MEI — flagged in enough markets that the recipe got quietly reworked in some of them. Phosphoric acid brings the tang, plus a documented habit of doing a number on bone mineral density over time, because your body pulls calcium to buffer the acid load. But hey, at least the can is pretty. Big trash. Round it out with a trade-secret flavor file and an isolated stimulant, and the last two ingredients show up like uninvited cousins at Thanksgiving — nobody asked, they're staying anyway.\n\nReal talk: there is no version of this that belongs in your regular rotation. It's a sugar-delivery vehicle engineered to light up reward pathways, and it hands your body nothing it can actually use. As an occasional treat you walk in with eyes open. As a habit, it's the single easiest thing in your cart to cut.",
+  marketingSays:
+    "'Original Taste' and 'Refreshing.' Notice what's missing — nobody's claiming it's good for you anymore. They stopped needing to. The formulation does its own recruiting.",
+  labelSays:
+    "Carbonated water, corn sweetener, synthetic color, industrial acid, a sealed flavor file, and a stimulant. Six ingredients. Every single one is industrial except the water.",
+  redFlagBreakdown: [
+    {
+      ingredient: "High Fructose Corn Syrup",
+      roast:
+        "Corn dismantled by enzymes and rebuilt into the cheapest sweetness industrial chemistry can produce. First non-water ingredient. In something calling itself a beverage.",
+    },
+    {
+      ingredient: "Caramel Color",
+      roast:
+        "Sounds like a stovetop, ships with a 4-MEI paper trail. It's there so sugar water photographs like something aged in oak barrels.",
+    },
+    {
+      ingredient: "Phosphoric Acid",
+      roast:
+        "The signature tang. Also degreases machinery and strips rust off bumpers. Laboratory sofa cleaner. Your skeleton buffers the bill.",
+    },
+    {
+      ingredient: "Natural Flavors",
+      roast:
+        "The most famous recipe on earth, and legally nobody has to tell you what's in it. A trade secret in a trench coat.",
+    },
+    {
+      ingredient: "Caffeine",
+      roast:
+        "An isolated stimulant riding shotgun on a sugar wave. It wakes up your 3pm meeting. Not your mitochondria.",
+    },
+  ],
+  processingVerdict:
+    "Nothing here was grown, squeezed, or brewed. It was formulated — a syrup tank, an acid, and a flavor file.",
+  finalWord:
+    "Your great-grandmother had a name for this: candy. She just never thought to drink it.",
+  cleanSwapIntro:
+    "You can do better without giving up the fizz: sparkling water, a real squeeze of lime, a splash of tart cherry juice if you need the sweet, and a tiny pinch of Celtic Sea Salt — ain't just better salt, it's the ancestral upgrade, trace minerals your cells can actually use. Cold glass, lots of ice, two minutes. Same ritual, none of the lab.",
+};
+
+// ---------------------------------------------------------------------------
 // Few-shot message history. Assistant turns are the exact JSON we expect back.
 // ---------------------------------------------------------------------------
 
 const FEW_SHOT_MESSAGES: Anthropic.MessageParam[] = [
+  { role: "user", content: COCA_COLA_INPUT },
+  { role: "assistant", content: JSON.stringify(COCA_COLA_SLAY, null, 2) },
   { role: "user", content: GATORADE_INPUT },
   { role: "assistant", content: JSON.stringify(GATORADE_SLAY, null, 2) },
   { role: "user", content: KETO_BUNS_INPUT },

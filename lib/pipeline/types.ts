@@ -39,6 +39,11 @@ export type LookupOutcome =
 /** Input to the main pipeline orchestrator. */
 export interface SlayProductInput {
   name: string;
+  /**
+   * The original external-API name when `name` came out of cleanProductName().
+   * Omit for manual/admin input — the stored name_raw is preserved.
+   */
+  nameRaw?: string;
   brand?: string;
   category?: string;
   subcategory?: string;

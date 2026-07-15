@@ -13,6 +13,7 @@ interface AdminProduct {
   id: string;
   slug: string;
   name: string;
+  name_raw: string | null;
   brand: string | null;
   category: string | null;
   score: number | null;
@@ -72,6 +73,11 @@ export default function AdminPage() {
   const [reslayingSlug, setReslayingSlug] = useState<string | null>(null);
   const [reslayError, setReslayError] = useState("");
   const [reslayResult, setReslayResult] = useState<ReslayResult | null>(null);
+
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  const [editedName, setEditedName] = useState("");
+  const [savingName, setSavingName] = useState(false);
+  const [renameError, setRenameError] = useState("");
 
   const adminFetch = useCallback(
     (path: string, init: RequestInit = {}, key = secret) =>
@@ -136,6 +142,37 @@ export default function AdminPage() {
       setSearchError(err instanceof Error ? err.message : "Search failed");
     } finally {
       setSearching(false);
+    }
+  }
+
+  async function handleRename(product: AdminProduct) {
+    const newName = editedName.trim();
+    if (!newName || newName === product.name) {
+      setEditingSlug(null);
+      return;
+    }
+    setSavingName(true);
+    setRenameError("");
+    try {
+      const res = await adminFetch("/api/admin/rename", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: product.slug, newName }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Rename failed (${res.status})`);
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id
+            ? { ...p, name: data.product.name, slug: data.product.slug }
+            : p,
+        ),
+      );
+      setEditingSlug(null);
+    } catch (err) {
+      setRenameError(err instanceof Error ? err.message : "Rename failed");
+    } finally {
+      setSavingName(false);
     }
   }
 
@@ -222,10 +259,58 @@ export default function AdminPage() {
           {products.map((p) => (
             <li key={p.id} className="rounded border border-neutral-300 p-4">
               <div className="flex items-baseline justify-between gap-2">
-                <div>
-                  <span className="font-semibold">{p.name}</span>
-                  {p.brand && <span className="text-neutral-500"> — {p.brand}</span>}
-                  <span className="ml-2 text-xs text-neutral-400">{p.slug}</span>
+                <div className="min-w-0 flex-1">
+                  {editingSlug === p.slug ? (
+                    <span className="flex items-center gap-2">
+                      <input
+                        value={editedName}
+                        onChange={(e) => setEditedName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleRename(p);
+                          if (e.key === "Escape") setEditingSlug(null);
+                        }}
+                        className="flex-1 rounded border border-neutral-400 px-2 py-1 font-semibold"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleRename(p)}
+                        disabled={savingName}
+                        className="rounded bg-black px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {savingName ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        onClick={() => setEditingSlug(null)}
+                        className="text-sm text-neutral-500 underline"
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <span>
+                      <span className="font-semibold">{p.name}</span>
+                      <button
+                        onClick={() => {
+                          setEditingSlug(p.slug);
+                          setEditedName(p.name);
+                          setRenameError("");
+                        }}
+                        className="ml-2 text-sm text-blue-700 underline"
+                      >
+                        Edit
+                      </button>
+                      {p.brand && <span className="text-neutral-500"> — {p.brand}</span>}
+                      <span className="ml-2 text-xs text-neutral-400">{p.slug}</span>
+                    </span>
+                  )}
+                  {p.name_raw && p.name_raw !== p.name && (
+                    <p className="mt-0.5 text-xs text-neutral-400">
+                      Raw API name: {p.name_raw}
+                    </p>
+                  )}
+                  {editingSlug === p.slug && renameError && (
+                    <p className="mt-1 text-sm text-red-600">{renameError}</p>
+                  )}
                 </div>
                 {p.status !== "published" && (
                   <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
