@@ -1,12 +1,14 @@
 /**
  * The Slay Writer's engine room: calls the Claude API with the brand voice
- * system prompt and three locked few-shot examples, and returns typed
+ * system prompt and five locked few-shot examples, and returns typed
  * SlayContent.
  *
- * The few-shot examples below ARE the voice standard. Every slay the model
- * writes gets measured against them, so treat edits here like brand edits.
- * Each example's user message mirrors the exact output of formatSlayInput —
- * keep them in sync.
+ * The few-shot examples below ARE the voice standard — adapted from real
+ * brand voice samples (July 2026). Every slay the model writes gets measured
+ * against them, so treat edits here like brand edits. They deliberately span
+ * registers (35 through 92) and categories (beverage, bakery, dip, beauty,
+ * coffee) so the voice holds everywhere. Each example's user message mirrors
+ * the exact output of formatSlayInput — keep them in sync.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -18,197 +20,369 @@ import { formatSlayInput } from "./format-input";
 const SLAY_MODEL = "claude-sonnet-4-6";
 
 // ---------------------------------------------------------------------------
-// EXAMPLE 1 — Kraft Mac & Cheese (Score: 45, Sketchy)
-// The mid-range register: sarcasm is awake, but the product gets credit for
-// the things it genuinely fixed (Kraft dropped synthetic dyes in 2016).
+// EXAMPLE 1 — Gatorade Lemon-Lime (Score: 35, Sketchy)
+// The sports-marketing roast register. Double sugar, petroleum dye, and the
+// Celtic Sea Salt upgrade where hydration is the product's whole pitch.
 // ---------------------------------------------------------------------------
 
-const KRAFT_INPUT = `Product: Original Macaroni & Cheese Dinner
-Brand: Kraft
-Category: Boxed Meal / Pasta
-Score: 45 / 100
+const GATORADE_INPUT = `Product: Thirst Quencher Lemon-Lime
+Brand: Gatorade
+Category: Beverage / Sports Drink
+Score: 35 / 100
 Verdict: Sketchy
 Processing Level: Ultra-Processed
 Is Organic: No
 
 Deduction Trail:
-- Sodium Triphosphate: -6 points — industrial phosphate used to keep dehydrated cheese powder stable and pourable
-- Sodium Phosphate: -5 points — phosphate additive; intake from processed food linked to concerns
-- Calcium Phosphate: -5 points — third phosphate on one label; anti-caking and texture agent
-- Enriched Wheat Flour: -4 points — refined grain, nutrients stripped in milling and re-added synthetically
-- Milk Protein Concentrate: -3 points — highly processed dairy fraction standing in for cheese
-- Processing level (ultra-processed): -12 points — powdered sauce system on a refined-grain base with multiple industrial additives
-- Product format (powdered): -10 points — the cheese sauce is a spray-dried powder, a transformation the ingredient list never admits to
-- Additive density: -5 points — 5 flagged ingredients across a 22-ingredient label
-- Non-organic conventional sourcing: -5 points — conventional ingredients cap the ceiling
+- Sugar: -8 points — added sugar as the second ingredient (position-weighted)
+- Dextrose: -6 points — a second added sugar; pure glucose under a lab name
+- Yellow 5: -8 points — synthetic azo dye tied to hyperactivity and allergic reactions; cosmetic only
+- Natural Flavor: -3 points — undisclosed flavoring compounds standing in for actual lemon and lime
+- Sodium Citrate: -3 points — synthetic electrolyte salt
+- Monopotassium Phosphate: -4 points — lab-made electrolyte additive
+- Hidden sugar penalty: -3 points — 2 different sweeteners on one label (sugar, dextrose)
+- Processing level (ultra-processed): -12 points — formulated beverage built entirely from refined inputs
+- Product format (formulated beverage): -10 points — engineered drink, not a recognizable food
+- Additive density: -8 points — 6 of 9 ingredients are industrial
 
 Flagged Ingredients (Red):
-- Sodium Triphosphate: industrial phosphate stabilizer
-- Sodium Phosphate: phosphate additive, flagged at processed-food intake levels
-- Calcium Phosphate: phosphate anti-caking agent
+- Yellow 5: synthetic azo dye, cosmetic only, flagged in several countries
 
 Flagged Ingredients (Amber):
-- Enriched Wheat Flour: refined flour with synthetic nutrient re-addition
-- Milk Protein Concentrate: processed dairy fraction used as a cheese substitute
+- Sugar: added sugar, second ingredient by weight
+- Dextrose: pure glucose under a name most shoppers won't recognize as sugar
+- Natural Flavor: undisclosed flavoring compounds
+- Sodium Citrate: synthetic electrolyte salt
+- Monopotassium Phosphate: lab-made electrolyte additive
 
 Front-of-Package Claims:
-- 'The Taste You Love'
-- 'No Artificial Flavors, Preservatives, or Dyes'
+- 'Thirst Quencher'
+- 'Electrolytes to Help Replace What You Sweat Out'
 
-Total Ingredients: 22
-Red Flags: 3
-Amber Flags: 2
-Sugar Aliases Found: 0
+Total Ingredients: 9
+Red Flags: 1
+Amber Flags: 5
+Sugar Aliases Found: 2
 
 Generate the slay.`;
 
-const KRAFT_SLAY: SlayContent = {
-  headline: "Macaroni with a chemistry degree.",
+const GATORADE_SLAY: SlayContent = {
+  headline: "Lab juice with a sports contract.",
   summary:
-    "Look — it's a blue box. Everyone knows what this is. But 'cheese product' and 'processed' are doing a lot of heavy lifting on that ingredient list, and the fact that the sauce comes as powder should tell you everything about how 'real' this cheese situation is.",
+    "Alright, let's wring this one out. Two sugars deep before a single electrolyte shows up, a petroleum dye so it looks like limes were involved, and 'natural flavor' doing the job of actual fruit. You're not hydrating — you're sipping lab juice with fake color, synthetic electrolytes, and enough sugar to make your pancreas sweat.",
   whyThisScore:
-    "Start with what's actually in the box: refined wheat macaroni and a foil pouch of cheese dust. Getting cheese to survive as a shelf-stable powder takes work — specifically three different phosphates (sodium triphosphate, sodium phosphate, calcium phosphate) doing jobs that cheese never asked for. One phosphate is maintenance. Three is a committee.\n\nCredit where it's due: no synthetic dyes. The orange comes from paprika, turmeric, and annatto — plants, not petroleum — and that's the main reason this lands at 45 instead of somewhere in the twenties. But the pasta is stripped white flour with the vitamins bolted back on at the factory, the closest thing to cheese here is milk protein concentrate and whey, and the entire sauce arrives dehydrated. The score reflects a product that fixed the small lies and kept the big one.",
+    "Start at the top of the label: water, then sugar, then dextrose. Dextrose is glucose in a lab coat — so that's a double sugar dose stacked up front, split across two names so neither one has to sit in the number-two spot alone. In a drink whose entire pitch is health. The hidden-sugar penalty exists for exactly this move.\n\nThen the costume department. Yellow 5 is a petroleum-derived dye that exists so the drink reads 'lemon-lime' to your eyeballs, because nothing else on the label will say it — there is no lemon and no lime in this lemon-lime, just 'natural flavor' shipped in from a flavor house. The electrolytes the bottle brags about are sodium citrate and monopotassium phosphate, lab salts your body was never introduced to. Real salt comes with sixty-plus trace minerals. This comes with a patent vibe.\n\nReal talk: you don't need this unless you're a sweaty linebacker in the fourth quarter of a summer game. For everyone else, it's a soft drink with an athletic department. Water, real fruit, and a pinch of actual mineral salt cover everything this bottle promises, without the dye.",
   marketingSays:
-    "The box leans on 'The Taste You Love' and 'No Artificial Flavors, Preservatives, or Dyes.' Both technically true. Notice what it doesn't mention: anything about what the cheese has been through to become a powder.",
+    "'Thirst Quencher' and 'Electrolytes to Help Replace What You Sweat Out.' They're selling you your own sweat back — with two sugars and a refinery color as the delivery fee.",
   labelSays:
-    "The label says the sauce is a spray-dried dust held together by three phosphates, the pasta is refined flour with the nutrition re-installed after milling removed it, and actual cheese is more of a theme than an ingredient. It isn't lying. It's just quietly hoping you stop reading after 'macaroni.'",
+    "Water, sugar twice under two names, lab electrolytes, a dye, and an undisclosed flavor packet. The lemon and the lime are both no-shows.",
   redFlagBreakdown: [
     {
-      ingredient: "Sodium Triphosphate",
+      ingredient: "Yellow 5",
       roast:
-        "One phosphate keeps cheese powder pourable. Kraft needed three. Ask yourself what the cheese did to deserve this.",
+        "Petroleum-derived dye so the drink looks like limes were consulted. They weren't. Flagged in several countries; here it gets a jersey.",
     },
     {
-      ingredient: "Sodium Phosphate",
+      ingredient: "Sugar",
       roast:
-        "The second phosphate. At this point they're not stabilizing cheese, they're embalming it.",
+        "Second ingredient. In a hydration product. The marketing team is doing more cardio than anyone drinking this.",
     },
     {
-      ingredient: "Calcium Phosphate",
+      ingredient: "Dextrose",
       roast:
-        "Phosphate number three, on one label. Even bad decisions usually stop at two.",
+        "Sugar's second costume — pure glucose hoping you don't recognize it without the name tag.",
     },
     {
-      ingredient: "Enriched Wheat Flour",
+      ingredient: "Natural Flavor",
       roast:
-        "They strip the flour, then add the vitamins back and call it 'enriched.' That's returning a stolen wallet and expecting a thank-you card.",
+        "The 'trust me, bro' of the ingredient world. No lemon, no lime, just a sealed drum of vibes from a flavor lab.",
     },
     {
-      ingredient: "Milk Protein Concentrate",
+      ingredient: "Sodium Citrate",
       roast:
-        "Cheese-adjacent, the way a stock photo of a family is family-adjacent.",
+        "A chemistry set's idea of salt. Your body ordered minerals and got a lab receipt.",
+    },
+    {
+      ingredient: "Monopotassium Phosphate",
+      roast:
+        "Synthetic electrolyte flexing as sports science. A banana does this job and brings fiber as a plus-one.",
     },
   ],
   processingVerdict:
-    "The cheese is a powder. Cheese does not become a powder by accident — that's a factory decision, and it's one the ingredient list never has to admit to.",
-  finalWord:
-    "Kraft cleaned up the dyes and kept the powder. That's not reform. That's a haircut.",
+    "Nobody squeezed anything to make this. It was formulated, dyed, and flavored — a beverage built like a spreadsheet.",
+  finalWord: "That ain't hydration, that's inflammation.",
   cleanSwapIntro:
-    "If you'd like mac and cheese where the cheese has been cheese the whole time, here's where to look.",
+    "You can do better without slowing down: water, a real squeeze of citrus, a pinch of Celtic Sea Salt — that ain't just better salt, it's the ancestral upgrade, trace minerals included — and a little honey if you're genuinely sweating for hours. Same electrolytes, zero dye.",
 };
 
 // ---------------------------------------------------------------------------
-// EXAMPLE 2 — Coca-Cola Classic (Score: 12, Toxic Trash)
-// Full roast mode. This is the register where the personality shines hardest.
+// EXAMPLE 2 — Healthy Life Keto Burger Buns (Score: 39, Sketchy)
+// The keto-washing roast: macros check out, chemistry doesn't.
 // ---------------------------------------------------------------------------
 
-const COKE_INPUT = `Product: Coca-Cola Classic
-Brand: Coca-Cola
-Category: Beverage / Soda
-Score: 12 / 100
-Verdict: Toxic Trash
+const KETO_BUNS_INPUT = `Product: Keto Burger Buns
+Brand: Healthy Life
+Category: Bakery / Bread
+Score: 39 / 100
+Verdict: Sketchy
 Processing Level: Ultra-Processed
 Is Organic: No
 
 Deduction Trail:
-- High Fructose Corn Syrup: -18 points — refined liquid sweetener as the first ingredient after water (position-weighted)
-- Caramel Color: -8 points — industrial coloring agent; certain manufacturing methods restricted abroad
-- Phosphoric Acid: -6 points — industrial acidulant used to mask sweetness
-- Natural Flavors: -4 points — undisclosed proprietary flavoring compounds
-- Processing level (ultra-processed): -12 points — formulated beverage with no whole-food ingredients
-- Product format (formulated beverage): -10 points — engineered drink, not a recognizable food
-- Sweetener-vehicle cap: -30 points — a sweetener leads the non-water ingredients; score capped
+- Canola Oil: -6 points — industrial seed oil
+- Sucralose: -6 points — artificial sweetener linked to gut microbiome concerns
+- Calcium Propionate: -5 points — mold-inhibiting preservative
+- Mono- and Diglycerides: -5 points — industrial emulsifier that can carry trans fats without declaring them
+- Modified Wheat Starch: -4 points — starch processed beyond recognition
+- Sorbic Acid: -4 points — second preservative on one label
+- Natural Flavor: -2 points — undisclosed flavoring compounds
+- Processing level (ultra-processed): -12 points — industrial bakery formulation
+- Additive density: -8 points — 7 of 13 ingredients are industrial
+- Complexity penalty: -3 points — formulation, not baking
 
 Flagged Ingredients (Red):
-- High Fructose Corn Syrup: refined liquid sweetener, heavily flagged at this label position
-- Caramel Color: industrial coloring agent
-- Phosphoric Acid: industrial acidulant
+- Canola Oil: industrial seed oil, cheap and chemically extracted
+- Sucralose: artificial sweetener, flagged for gut microbiome concerns
+- Calcium Propionate: mold-inhibiting industrial preservative
 
 Flagged Ingredients (Amber):
-- Natural Flavors: undisclosed flavoring compounds
-- Caffeine: added stimulant
+- Mono- and Diglycerides: emulsifier that can carry undeclared trans fats
+- Modified Wheat Starch: heavily processed starch base
+- Sorbic Acid: second preservative
+- Natural Flavor: undisclosed flavoring compounds
 
 Front-of-Package Claims:
-- 'Original Taste'
+- 'Keto Certified'
+- '2g Net Carbs'
+- 'Healthy Life'
 
-Total Ingredients: 6
+Total Ingredients: 13
 Red Flags: 3
-Amber Flags: 2
-Sugar Aliases Found: 1
-Note: A sweetener leads the non-water ingredients — this product is primarily a sugar-delivery vehicle.
+Amber Flags: 4
+Sugar Aliases Found: 0
 
 Generate the slay.`;
 
-const COKE_SLAY: SlayContent = {
-  headline: "Carbonated regret in a red can.",
+const KETO_BUNS_SLAY: SlayContent = {
+  headline: "Keto by math. Lab loaf by birth.",
   summary:
-    "It's sugar water. That's it. That's the whole product. The caramel color is there to make sugar water look like it has a personality, and the 'natural flavors' are there because 'we're not telling you' tested better in focus groups.",
+    "Buckle up, keto fam. The carb count checks out — the chemistry is another story. Low-carb don't mean low-chemical, and this is a processed lab loaf dipped in preservatives and seed oil slime, wearing a 'Healthy Life' name tag like that settles it.",
   whyThisScore:
-    "Set the fizzy water aside and the first real ingredient is high fructose corn syrup. That makes this a sugar-delivery vehicle by the engine's own math, and the score caps accordingly. Everything after the syrup is staff: caramel color so the sugar water looks serious, phosphoric acid so it doesn't taste like syrup, caffeine so you come back tomorrow.\n\nSix ingredients sounds restrained until you look at what they are. 'Natural flavors' is a recipe hiding behind a legal curtain — undisclosed by design, and it's been undisclosed since 1886. Caramel color is pure costume. Phosphoric acid is doing the job your taste buds would otherwise do, which is telling you this is far too sweet. A 12 isn't harsh. A 12 is generous, and only because nothing in here is pretending to be food.",
+    "The skeleton of this bun is modified wheat starch — wheat that's been processed so far past flour it legally needs a new name — held together with canola oil, the industrial seed oil that shows up wherever a manufacturer needs cheap fat that won't complain. That's the foundation. Everything else is maintenance.\n\nAnd the maintenance department is fully staffed: calcium propionate to keep mold away, sorbic acid as backup because apparently one preservative wasn't enough insurance on a bun, mono- and diglycerides to keep the crumb from separating, and sucralose to sweeten a bread that has no sugar to confess. This bun is preserved like it has somewhere to be in 2029. Bread your great-grandmother made went stale in two days, and that was the point — it was food.\n\nReal talk: if you're keto and you need a bun, this will technically do the job the macros promise. But 'keto certified' measures carbs, not quality — the certification doesn't know what canola oil is. There are cleaner ways to hit the same number, and most of them involve a mixing bowl.",
   marketingSays:
-    "The can promises 'Original Taste' — heritage, nostalgia, a polar bear if it's winter. What that phrase actually describes is the world's most successful sugar-water recipe, unchanged because it works.",
+    "'Keto Certified,' '2g Net Carbs,' and a brand literally named 'Healthy Life.' That's keto-washing — hit the macro, skip the food, and let the certification do the talking.",
   labelSays:
-    "Water, syrup, costume, acid, secret, caffeine. That's the entire list. The label is six words long and still manages to withhold the recipe.",
+    "Modified starch, industrial oil, two preservatives, an emulsifier, and a fake sweetener. The label reads like a maintenance schedule, not a recipe.",
   redFlagBreakdown: [
     {
-      ingredient: "High Fructose Corn Syrup",
+      ingredient: "Canola Oil",
       roast:
-        "The main event — everything else in the can works for the syrup. Your pancreas just filed a restraining order.",
+        "The ex that keeps texting your metabolism at 2am. Industrial, cheap, chemically extracted, and somehow in everything.",
     },
     {
-      ingredient: "Caramel Color",
+      ingredient: "Sucralose",
       roast:
-        "Pure costume. Without it you'd be drinking pale sugar water and asking yourself harder questions.",
+        "Sweetness with no calories and no fans downstairs. Your gut bacteria read the label and said 'we out.'",
     },
     {
-      ingredient: "Phosphoric Acid",
+      ingredient: "Calcium Propionate",
       roast:
-        "Added to cut the sweetness so you can't taste how much sugar you're actually drinking. That's not a flavor. That's a cover-up.",
+        "The preservative keeping this bun 'fresh' for weeks. Mold doesn't even want this bun, and mold has famously low standards.",
     },
     {
-      ingredient: "Natural Flavors",
+      ingredient: "Mono- and Diglycerides",
       roast:
-        "The recipe is a secret. It's been a secret for 140 years. At some point 'mysterious' just means 'hiding.'",
+        "Emulsifiers that can smuggle trans-fat energy past the label police. They got in the club, but they were never on the real-food list.",
     },
     {
-      ingredient: "Caffeine",
-      roast: "The loyalty program.",
+      ingredient: "Modified Wheat Starch",
+      roast:
+        "Wheat that's been through so much it changed its name and moved states.",
+    },
+    {
+      ingredient: "Sorbic Acid",
+      roast:
+        "The second preservative. When one bodyguard isn't enough, ask what the bun is so afraid of.",
+    },
+    {
+      ingredient: "Natural Flavor",
+      roast: "Flavor from a drum, name from a meadow.",
     },
   ],
   processingVerdict:
-    "Nobody cooked this. It was formulated — engineered down to the acid level so the sugar goes down smooth, and it shows.",
-  finalWord:
-    "This isn't a drink with sugar in it. It's sugar with a drink around it.",
+    "Extruded, emulsified, and preserved — this came off a production line, not out of an oven anyone would recognize.",
+  finalWord: "Mold won't touch this bun. Let that sink in before you do.",
   cleanSwapIntro:
-    "If it's the fizz you're after and not the syrup, there are honest ways to get it.",
+    "You can do better, keto or not. If carbs aren't actually your enemy, a real sourdough from a real bakery has four ingredients. If they are: homemade almond-flour buns — almond flour, eggs, psyllium husk, baking powder, pinch of Celtic Sea Salt, 25 minutes at 350. No lab required.",
 };
 
 // ---------------------------------------------------------------------------
-// EXAMPLE 3 — Organic EVOO (Score: 100, Slayer Approved)
-// Genuine respect. Brief. Not trying to be funny — the product earned a
-// straight answer.
+// EXAMPLE 3 — Kirkland Organic Guacamole (Score: 90, Slayer Approved)
+// Genuine respect with swagger. Brief. One gentle amber note, no manufactured
+// outrage.
 // ---------------------------------------------------------------------------
 
-const EVOO_INPUT = `Product: Organic Cold-Pressed Extra Virgin Olive Oil
-Brand: Generic
-Category: Pantry / Cooking Oil
-Score: 100 / 100
+const GUAC_INPUT = `Product: Organic Guacamole
+Brand: Kirkland Signature
+Category: Food / Dip
+Score: 90 / 100
 Verdict: Slayer Approved
-Processing Level: Minimally Processed
+Processing Level: Moderately Processed
 Is Organic: Yes
 
 Deduction Trail:
-- None. Nothing to deduct.
+- Citric Acid: -2 points — lab-produced acidulant, used here to keep the avocado from browning
+- Processing level (moderately processed): -5 points — commercially mashed, seasoned, and sealed
+- Additive density: -3 points — 1 of 9 ingredients is industrial
+
+Flagged Ingredients (Red):
+- None
+
+Flagged Ingredients (Amber):
+- Citric Acid: lab-produced acidulant, anti-browning agent
+
+Front-of-Package Claims:
+- 'Organic'
+
+Total Ingredients: 9
+Red Flags: 0
+Amber Flags: 1
+Sugar Aliases Found: 0
+
+Generate the slay.`;
+
+const GUAC_SLAY: SlayContent = {
+  headline: "Guac with nothing to confess.",
+  summary:
+    "Alright, hand it over — let's see what Costco's hiding. Turns out: nothing. Zero seed oils, zero added sugars, and every flavor ingredient your abuela would've used if she had to mass-produce guacamole.",
+  whyThisScore:
+    "Read the list: organic avocados first and overwhelmingly, then real onion, jalapeño, lime, garlic, cilantro, salt. That's not an ingredient list, that's a recipe. The lime is doing double duty as flavor and preservation, which is how this was handled for a few thousand years before anyone invented a preservative aisle.\n\nThe two points off the top are citric acid — the only ingredient here with a lab coat, and its whole job is keeping the avocado green in transit. The rest of the deduction is just the reality of a factory dip: mashed and sealed at scale instead of in your kitchen. That's a ceiling, not a crime.\n\nReal talk: this is real food in a plastic tub. Organic produce, actual aromatics, and a preservation strategy that's mostly just lime with one lab assist. For store-bought guacamole at warehouse scale, it doesn't get much cleaner than this.",
+  marketingSays:
+    "'Organic.' One claim, and for once the front of the package and the back are telling the same story.",
+  labelSays:
+    "Avocados, vegetables, lime, salt, and one anti-browning assist. A recipe, not a formulation.",
+  redFlagBreakdown: [
+    {
+      ingredient: "Citric Acid",
+      roast:
+        "The only ingredient here with a lab coat, and it's just keeping the avocado green. We'll allow it.",
+    },
+  ],
+  processingVerdict:
+    "Mashed, seasoned, sealed. Processing a kitchen would recognize.",
+  finalWord: "That's right — it's struttin' high for a reason.",
+  cleanSwapIntro:
+    "No swap needed — this is the shelf doing its job. Want the perfect version anyway? Two avocados, half a lime, diced onion, cilantro, pinch of Celtic Sea Salt. Five minutes, zero tub.",
+};
+
+// ---------------------------------------------------------------------------
+// EXAMPLE 4 — SEKKISEI Cream Excellent (Score: 45, Sketchy)
+// Beauty products get the same treatment — this example proves the range.
+// ---------------------------------------------------------------------------
+
+const SEKKISEI_INPUT = `Product: Cream Excellent
+Brand: SEKKISEI
+Category: Beauty / Skincare
+Score: 45 / 100
+Verdict: Sketchy
+Processing Level: Heavily Processed
+Is Organic: No
+
+Deduction Trail:
+- Alcohol: -8 points — drying solvent, third ingredient by weight (position-weighted)
+- Methylparaben: -6 points — preservative flagged as an endocrine question mark; restricted in some markets
+- Propylparaben: -6 points — second paraben, restricted in several markets
+- Fragrance: -6 points — one word legally hiding dozens of undisclosed compounds
+- PEG-40 Hydrogenated Castor Oil: -5 points — penetration-enhancing emulsifier
+- Dimethicone: -4 points — occlusive silicone; cosmetic smoothing only
+- Processing level (heavily processed): -10 points — solvent-and-silicone formulation over an herbal base
+- Additive density: -10 points — 6 of 12 ingredients are industrial
+
+Flagged Ingredients (Red):
+- Methylparaben: preservative flagged for endocrine concerns, restricted in some markets
+- Propylparaben: second paraben preservative, restricted in several markets
+- Fragrance: undisclosed compound blend
+
+Flagged Ingredients (Amber):
+- Alcohol: drying solvent, high on the label
+- Dimethicone: occlusive silicone, cosmetic effect only
+- PEG-40 Hydrogenated Castor Oil: penetration-enhancing emulsifier
+
+Front-of-Package Claims:
+- 'Herbal Beauty Essence'
+- 'Translucent Skin'
+
+Total Ingredients: 12
+Red Flags: 3
+Amber Flags: 3
+Sugar Aliases Found: 0
+
+Generate the slay.`;
+
+const SEKKISEI_SLAY: SlayContent = {
+  headline: "A beautiful herbal recipe, mugged in the lab parking lot.",
+  summary:
+    "Let's strip this one down — skincare labels play by the same rules as food labels, and this one's a tragedy in two acts. There's a genuinely solid herbal backbone here: Job's tears, angelica root, real plant extracts with centuries of receipts. Then somebody drowned it in alcohol, two parabens, a PEG, and mystery fragrance. It's like cooking a beautiful grass-fed steak and then dousing it in Axe body spray.",
+  whyThisScore:
+    "Give credit first: the herbal core of this cream is real. Coix seed — Job's tears — and angelica root aren't marketing garnish; they're extracts with a long traditional track record for skin. If the label stopped there, this thing scores in the eighties.\n\nIt does not stop there. Alcohol is the third ingredient — there to make the cream feel weightless, achieved by drying the very skin the herbs came to help. Then the preservation is handled by a paraben double act, methylparaben and propylparaben, both carrying endocrine question marks and restrictions in multiple markets. PEG-40 helps everything absorb more deeply — including the things you'd rather stayed on the surface — and 'fragrance' is one word legally hiding a compound list longer than the one printed. Dimethicone smooths it all over so the mirror tells you it worked.\n\nReal talk: the plants in this jar deserve better management. If your skin tolerates it, you'll see a temporary glow — that's the silicone, not the herbs. There are herbal creams with modern preservation systems that deliver the same tradition without the 2003 chemistry.",
+  marketingSays:
+    "'Herbal Beauty Essence' and 'Translucent Skin.' The front sells you the garden. The back delivers the garden plus the chemical shed behind it.",
+  labelSays:
+    "Water, glycerin, then alcohol before a single herb shows up — followed by the actual plants, then silicones, a PEG, two parabens, and an undisclosed fragrance blend riding shotgun.",
+  redFlagBreakdown: [
+    {
+      ingredient: "Methylparaben",
+      roast:
+        "A preservative flagged as an endocrine question mark. Your face deserves declarative sentences.",
+    },
+    {
+      ingredient: "Propylparaben",
+      roast:
+        "The second paraben — restricted in several markets, still headlining in this jar.",
+    },
+    {
+      ingredient: "Fragrance",
+      roast:
+        "One word, legally allowed to hide dozens of compounds. The 'trust me, bro' of the beauty aisle.",
+    },
+    {
+      ingredient: "Alcohol",
+      roast:
+        "Third ingredient. It makes the cream feel light — by drying the skin the herbs were hired to help. Sabotage from inside the building.",
+    },
+    {
+      ingredient: "Dimethicone",
+      roast:
+        "Silicone gloss — a smoothing filter for your face. Looks great in the moment, changes nothing underneath.",
+    },
+    {
+      ingredient: "PEG-40 Hydrogenated Castor Oil",
+      roast:
+        "The doorman who waves everything through — including the guests you specifically didn't invite.",
+    },
+  ],
+  processingVerdict:
+    "Formulated like it's 2003 — silicone shine and paraben insurance layered over an herbal heart.",
+  finalWord: "Good herbs. Wrong bodyguards.",
+  cleanSwapIntro:
+    "You can do better without abandoning the tradition: look for herbal creams that preserve with modern systems and say 'fragrance-free' on the front — or go simple with squalane plus the actual extract you wanted in the first place.",
+};
+
+// ---------------------------------------------------------------------------
+// EXAMPLE 5 — Café Bustelo Espresso (Score: 92, Slayer Approved)
+// High score, brief, honest about the small ceiling without inflating it.
+// ---------------------------------------------------------------------------
+
+const BUSTELO_INPUT = `Product: Espresso Style Dark Roast Ground Coffee
+Brand: Café Bustelo
+Category: Beverage / Coffee
+Score: 92 / 100
+Verdict: Slayer Approved
+Processing Level: Minimally Processed
+Is Organic: No
+
+Deduction Trail:
+- Non-organic conventional sourcing: -8 points — conventional coffee is a heavily sprayed crop; organic certification would lift the cap
 
 Flagged Ingredients (Red):
 - None
@@ -217,8 +391,8 @@ Flagged Ingredients (Amber):
 - None
 
 Front-of-Package Claims:
-- 'Organic'
-- 'Cold-Pressed'
+- 'Espresso Style'
+- '100% Pure Coffee'
 
 Total Ingredients: 1
 Red Flags: 0
@@ -227,22 +401,21 @@ Sugar Aliases Found: 0
 
 Generate the slay.`;
 
-const EVOO_SLAY: SlayContent = {
-  headline: "One ingredient. Zero games.",
+const BUSTELO_SLAY: SlayContent = {
+  headline: "One ingredient. It's coffee. We're done here.",
   summary:
-    "Organic extra virgin olive oil. That's the ingredient list. That's the review. Your great-grandparents would recognize every word on this label, mostly because there's only one.",
+    "Alright, this one's quick. The ingredient list says coffee. That's the list. No additives, no preservatives, no 'flavor system' — just beans roasted dark enough to mean it.",
   whyThisScore:
-    "There's nothing to deduct. One ingredient, organically grown, cold-pressed — which means the oil was squeezed out of olives rather than chemically extracted from them. The label and the product are the same thing. That's the entire trick, and almost nobody in the aisle manages it.\n\nNo fillers, no flavor systems, no colors, nothing to stabilize because nothing is unstable. People were making this three thousand years ago without a chemistry department, and the recipe hasn't needed a single addition since. It scores 100 because the engine found nothing to argue with. Neither do we.",
+    "Single ingredient, and the front of the package and the back are in complete agreement — '100% Pure Coffee' is somehow both a marketing claim and a plain fact. The eight missing points are a ceiling, not a crime: conventional coffee is one of the more heavily sprayed crops on earth, and these beans carry that farming history. Organic certification is the only thing between this and the high nineties.\n\nReal talk: this is exactly what a coffee label should look like, at a price that doesn't require a second job. If it's your daily cup, organic shade-grown beans are a genuine upgrade worth the money. If it's not, drink this without a second thought.",
   marketingSays:
-    "The front says 'Organic' and 'Cold-Pressed.' Two claims, both of them just descriptions of what's in the bottle.",
-  labelSays:
-    "The back says organic cold-pressed extra virgin olive oil. The front and the back are telling the same story. Frame it.",
+    "'Espresso Style' and '100% Pure Coffee.' Both just true. Refreshing, honestly.",
+  labelSays: "Coffee. That's it. That's the label.",
   redFlagBreakdown: [],
   processingVerdict:
-    "Minimally processed in the oldest sense — pressed, bottled, done.",
-  finalWord: "Nothing to hide. That's how it should be.",
+    "Roasted and ground — the same processing coffee got two hundred years ago.",
+  finalWord: "Single ingredient, zero apologies. More labels should be this boring.",
   cleanSwapIntro:
-    "No swap needed — this is what the swaps are for. If it's already in your kitchen, carry on.",
+    "No swap needed — but if you want the last eight points, organic shade-grown beans are the move. Same ritual, cleaner crop.",
 };
 
 // ---------------------------------------------------------------------------
@@ -250,12 +423,16 @@ const EVOO_SLAY: SlayContent = {
 // ---------------------------------------------------------------------------
 
 const FEW_SHOT_MESSAGES: Anthropic.MessageParam[] = [
-  { role: "user", content: KRAFT_INPUT },
-  { role: "assistant", content: JSON.stringify(KRAFT_SLAY, null, 2) },
-  { role: "user", content: COKE_INPUT },
-  { role: "assistant", content: JSON.stringify(COKE_SLAY, null, 2) },
-  { role: "user", content: EVOO_INPUT },
-  { role: "assistant", content: JSON.stringify(EVOO_SLAY, null, 2) },
+  { role: "user", content: GATORADE_INPUT },
+  { role: "assistant", content: JSON.stringify(GATORADE_SLAY, null, 2) },
+  { role: "user", content: KETO_BUNS_INPUT },
+  { role: "assistant", content: JSON.stringify(KETO_BUNS_SLAY, null, 2) },
+  { role: "user", content: GUAC_INPUT },
+  { role: "assistant", content: JSON.stringify(GUAC_SLAY, null, 2) },
+  { role: "user", content: SEKKISEI_INPUT },
+  { role: "assistant", content: JSON.stringify(SEKKISEI_SLAY, null, 2) },
+  { role: "user", content: BUSTELO_INPUT },
+  { role: "assistant", content: JSON.stringify(BUSTELO_SLAY, null, 2) },
 ];
 
 // ---------------------------------------------------------------------------
