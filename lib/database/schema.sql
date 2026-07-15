@@ -162,16 +162,17 @@ create table if not exists public.product_submissions (
   image_url text,
   submitted_by text,
   status text not null default 'pending'
-    check (status in ('pending', 'approved', 'rejected', 'duplicate', 'flagged-for-review')),
+    check (status in ('pending', 'approved', 'rejected', 'duplicate', 'flagged-for-review', 'auto-slayed')),
   notes text,
   created_at timestamptz not null default now()
 );
 
 -- 'flagged-for-review' rows record user "label changed" reports against
--- existing products; recreate the check for databases on the original schema.
+-- existing products; 'auto-slayed' rows record request-slay/bulk runs awaiting
+-- admin review. Recreate the check for databases on the original schema.
 alter table public.product_submissions drop constraint if exists product_submissions_status_check;
 alter table public.product_submissions add constraint product_submissions_status_check
-  check (status in ('pending', 'approved', 'rejected', 'duplicate', 'flagged-for-review'));
+  check (status in ('pending', 'approved', 'rejected', 'duplicate', 'flagged-for-review', 'auto-slayed'));
 
 create index if not exists product_submissions_status_idx
   on public.product_submissions (status);

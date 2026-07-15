@@ -113,7 +113,13 @@ export interface ProductSubmissionRow {
   ingredients_raw: string | null;
   image_url: string | null;
   submitted_by: string | null;
-  status: "pending" | "approved" | "rejected" | "duplicate" | "flagged-for-review";
+  status:
+    | "pending"
+    | "approved"
+    | "rejected"
+    | "duplicate"
+    | "flagged-for-review"
+    | "auto-slayed";
   notes: string | null;
   created_at: string;
 }

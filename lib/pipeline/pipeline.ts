@@ -55,7 +55,12 @@ function hasStoredSlay(product: ProductRow): boolean {
 
 export async function slayProduct(
   input: SlayProductInput,
-  options: { forceReslay?: boolean } = {},
+  options: {
+    forceReslay?: boolean;
+    /** Status to save with. Defaults to "published"; auto-slayed products from
+     *  user requests and bulk runs use "pending-review" for admin sign-off. */
+    saveStatus?: "published" | "pending-review";
+  } = {},
 ): Promise<{ product: ProductRow; slayContent: SlayContent; fromCache: boolean }> {
   const slug = productSlug(input.name, input.brand);
   console.log(`Pipeline: slaying "${input.name}" (${slug})`);
@@ -128,7 +133,7 @@ export async function slayProduct(
     slay_summary: slayContent.summary,
     slay_content: slayContent,
     deductions: scoreResult.deductions,
-    status: "published",
+    status: options.saveStatus ?? "published",
     reviewed_at: new Date().toISOString(),
   };
   const product = await upsertProduct(upsert);

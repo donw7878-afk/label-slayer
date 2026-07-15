@@ -8,7 +8,8 @@
  */
 
 export { slayProduct, slayByBarcode, slayBySearch, productSlug, slugify } from "./pipeline";
-export { lookupProduct, lookupByBarcode, searchByName, looksLikeBarcode } from "./lookup";
+export { lookupProduct, lookupByBarcode, searchByName, searchExternal, looksLikeBarcode } from "./lookup";
+export { searchUSDA, lookupUSDAByBarcode, getUSDAProduct, mapUsdaFood } from "./usda";
 export { cleanProductName } from "./cleanup";
 export { submitProductForReview } from "./submit";
 export type { SubmitProductInput, SubmitProductResult } from "./submit";

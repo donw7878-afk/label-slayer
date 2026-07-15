@@ -34,6 +34,20 @@ interface FlaggedSubmission {
   created_at: string;
 }
 
+interface PendingProduct {
+  id: string;
+  slug: string;
+  name: string;
+  brand: string | null;
+  score: number | null;
+  verdict: string | null;
+  verdict_label: string | null;
+  slay_headline: string | null;
+  slay_summary: string | null;
+  slay_content: unknown;
+  reviewed_at: string | null;
+}
+
 interface ReslaySnapshot {
   score: number | null;
   verdict: string | null;
@@ -79,6 +93,12 @@ export default function AdminPage() {
   const [savingName, setSavingName] = useState(false);
   const [renameError, setRenameError] = useState("");
 
+  const [pending, setPending] = useState<PendingProduct[]>([]);
+  const [moderatingSlug, setModeratingSlug] = useState<string | null>(null);
+  const [moderateError, setModerateError] = useState("");
+  const [editingSlaySlug, setEditingSlaySlug] = useState<string | null>(null);
+  const [editedSlayJson, setEditedSlayJson] = useState("");
+
   const adminFetch = useCallback(
     (path: string, init: RequestInit = {}, key = secret) =>
       fetch(path, {
@@ -99,6 +119,17 @@ export default function AdminPage() {
     [adminFetch, secret],
   );
 
+  const loadPending = useCallback(
+    async (key = secret) => {
+      const res = await adminFetch("/api/admin/pending", {}, key);
+      if (!res.ok) return false;
+      const data = await res.json();
+      setPending(data.pending ?? []);
+      return true;
+    },
+    [adminFetch, secret],
+  );
+
   // Resume a session: reuse the stored secret if it still checks out.
   useEffect(() => {
     const stored = sessionStorage.getItem(SECRET_KEY);
@@ -107,6 +138,7 @@ export default function AdminPage() {
       if (ok) {
         setSecret(stored);
         setAuthed(true);
+        loadPending(stored);
       } else {
         sessionStorage.removeItem(SECRET_KEY);
       }
@@ -121,6 +153,7 @@ export default function AdminPage() {
     if (ok) {
       sessionStorage.setItem(SECRET_KEY, secret);
       setAuthed(true);
+      loadPending(secret);
     } else {
       setLoginError("Wrong password.");
     }
@@ -173,6 +206,38 @@ export default function AdminPage() {
       setRenameError(err instanceof Error ? err.message : "Rename failed");
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function handleModerate(
+    product: PendingProduct,
+    action: "approve" | "reject",
+    slayJson?: string,
+  ) {
+    setModeratingSlug(product.slug);
+    setModerateError("");
+    try {
+      let slayContent: unknown;
+      if (slayJson !== undefined) {
+        try {
+          slayContent = JSON.parse(slayJson);
+        } catch {
+          throw new Error("Edited slay is not valid JSON — fix it before publishing.");
+        }
+      }
+      const res = await adminFetch("/api/admin/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: product.slug, action, slayContent }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Moderation failed (${res.status})`);
+      setEditingSlaySlug(null);
+      await loadPending();
+    } catch (err) {
+      setModerateError(err instanceof Error ? err.message : "Moderation failed");
+    } finally {
+      setModeratingSlug(null);
     }
   }
 
@@ -403,6 +468,99 @@ export default function AdminPage() {
           </table>
         </section>
       )}
+
+      {/* Pending review queue */}
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold">Slays Pending Review</h2>
+          <button onClick={() => loadPending()} className="text-sm text-blue-700 underline">
+            Refresh
+          </button>
+        </div>
+        {moderateError && <p className="text-sm text-red-600">{moderateError}</p>}
+        {pending.length === 0 ? (
+          <p className="text-sm text-neutral-500">No slays waiting for review.</p>
+        ) : (
+          <ul className="space-y-4">
+            {pending.map((p) => (
+              <li key={p.id} className="rounded border border-neutral-300 p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <div>
+                    <span className="font-semibold">{p.name}</span>
+                    {p.brand && <span className="text-neutral-500"> — {p.brand}</span>}
+                  </div>
+                  <span className="shrink-0 text-sm">
+                    <span className="font-semibold">{p.score ?? "—"}</span>
+                    <span className="text-neutral-500"> · {p.verdict_label ?? p.verdict ?? "—"}</span>
+                  </span>
+                </div>
+                {p.slay_headline && (
+                  <p className="mt-1 text-sm font-semibold italic">“{p.slay_headline}”</p>
+                )}
+                {p.slay_summary && (
+                  <p className="mt-1 line-clamp-2 text-sm text-neutral-700">
+                    {p.slay_summary}
+                  </p>
+                )}
+                {editingSlaySlug === p.slug ? (
+                  <div className="mt-3 space-y-2">
+                    <textarea
+                      value={editedSlayJson}
+                      onChange={(e) => setEditedSlayJson(e.target.value)}
+                      rows={14}
+                      spellCheck={false}
+                      className="w-full rounded border border-neutral-300 px-3 py-2 font-mono text-xs"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleModerate(p, "approve", editedSlayJson)}
+                        disabled={moderatingSlug !== null}
+                        className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {moderatingSlug === p.slug ? "Publishing…" : "Save & Publish"}
+                      </button>
+                      <button
+                        onClick={() => setEditingSlaySlug(null)}
+                        className="text-sm text-neutral-500 underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleModerate(p, "approve")}
+                      disabled={moderatingSlug !== null}
+                      className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {moderatingSlug === p.slug ? "Working…" : "Approve & Publish"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingSlaySlug(p.slug);
+                        setEditedSlayJson(JSON.stringify(p.slay_content ?? {}, null, 2));
+                        setModerateError("");
+                      }}
+                      disabled={moderatingSlug !== null}
+                      className="rounded border border-neutral-400 px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                    >
+                      Edit & Publish
+                    </button>
+                    <button
+                      onClick={() => handleModerate(p, "reject")}
+                      disabled={moderatingSlug !== null}
+                      className="rounded border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {/* Flag queue */}
       <section className="space-y-3">

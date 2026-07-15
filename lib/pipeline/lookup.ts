@@ -1,5 +1,11 @@
 /**
- * Product lookup: our database first, then Open Food Facts / Open Beauty Facts.
+ * Product lookup, layered by data quality:
+ *
+ *   1. Supabase           — free, instant, already slayed
+ *   2. USDA FoodData Central — manufacturer-submitted labels, clean data
+ *   3. Open Food Facts    — global community coverage
+ *   4. Open Beauty Facts  — cosmetics / personal care
+ *   5. Not found          — null, caller prompts a user submission
  *
  * External APIs go down, rate-limit, and return half-empty records — every
  * call here is wrapped with a timeout and returns null/[] instead of throwing
@@ -11,6 +17,7 @@ import {
   searchProducts,
   type ProductRow,
 } from "../database/queries";
+import { lookupUSDAByBarcode, mapUsdaFood, searchUSDA } from "./usda";
 import type { LookupOutcome, ProductLookupResult, ProductSource } from "./types";
 
 const FETCH_TIMEOUT_MS = 10_000;
@@ -145,7 +152,17 @@ export async function lookupByBarcode(
     }
   }
 
-  // 2. Open Food Facts, then Open Beauty Facts.
+  // 2. USDA FoodData Central — the cleanest external data.
+  const usdaFood = await lookupUSDAByBarcode(barcode);
+  if (usdaFood) {
+    const mapped = mapUsdaFood(usdaFood);
+    if (mapped) {
+      console.log(`Lookup: ${barcode} found on USDA (${mapped.name})`);
+      return mapped;
+    }
+  }
+
+  // 3-4. Open Food Facts, then Open Beauty Facts.
   for (const api of BARCODE_APIS) {
     const payload = (await fetchJson(
       `${api.base}/api/v2/product/${encodeURIComponent(barcode)}`,
@@ -167,6 +184,53 @@ export async function lookupByBarcode(
 // Name search
 // ---------------------------------------------------------------------------
 
+async function searchOpenFoodFacts(
+  query: string,
+  limit: number,
+): Promise<ProductLookupResult[]> {
+  const payload = (await fetchJson(
+    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=${limit}`,
+  )) as { products?: OffProduct[] } | null;
+  return (payload?.products ?? [])
+    .map((product) => mapOffProduct(product, "openfoodfacts", null))
+    .filter((result): result is ProductLookupResult => result !== null);
+}
+
+/**
+ * External-only name search: USDA first, merged with Open Food Facts.
+ * Duplicates (same barcode from both sources) keep the USDA record — its
+ * manufacturer-submitted ingredient strings are cleaner.
+ */
+export async function searchExternal(
+  query: string,
+  limit = 10,
+): Promise<ProductLookupResult[]> {
+  const [usdaFoods, offResults] = await Promise.all([
+    searchUSDA(query, limit),
+    searchOpenFoodFacts(query, limit),
+  ]);
+  const usdaResults = usdaFoods
+    .map(mapUsdaFood)
+    .filter((result): result is ProductLookupResult => result !== null);
+
+  const seenBarcodes = new Set(
+    usdaResults
+      .map((r) => r.barcode?.replace(/^0+/, ""))
+      .filter((code): code is string => Boolean(code)),
+  );
+  const merged = [
+    ...usdaResults,
+    ...offResults.filter(
+      (r) => !r.barcode || !seenBarcodes.has(r.barcode.replace(/^0+/, "")),
+    ),
+  ].slice(0, limit);
+
+  console.log(
+    `Lookup: "${query}" matched ${usdaResults.length} on USDA + ${offResults.length} on Open Food Facts (${merged.length} after merge)`,
+  );
+  return merged;
+}
+
 export async function searchByName(
   query: string,
   limit = 10,
@@ -178,19 +242,8 @@ export async function searchByName(
     return existing.map(mapDatabaseProduct);
   }
 
-  // 2. Open Food Facts search.
-  const payload = (await fetchJson(
-    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=${limit}`,
-  )) as { products?: OffProduct[] } | null;
-
-  const products = payload?.products ?? [];
-  const mapped = products
-    .map((product) => mapOffProduct(product, "openfoodfacts", null))
-    .filter((result): result is ProductLookupResult => result !== null);
-  console.log(
-    `Lookup: "${query}" matched ${mapped.length} products on Open Food Facts`,
-  );
-  return mapped;
+  // 2. External sources — USDA merged with Open Food Facts.
+  return searchExternal(query, limit);
 }
 
 // ---------------------------------------------------------------------------
