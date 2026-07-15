@@ -41,6 +41,22 @@ export function productSlug(name: string, brand?: string | null): string {
 }
 
 /**
+ * URL slug for /products/[category]/... — the more specific subcategory wins
+ * when present ("Snacks" beats "food").
+ */
+export function categorySlugFor(
+  category?: string | null,
+  subcategory?: string | null,
+): string {
+  return slugify(subcategory || category || "") || "uncategorized";
+}
+
+/** URL slug for /products/[category]/[brand]/... */
+export function brandSlugFor(brand?: string | null): string {
+  return slugify(brand || "") || "unbranded";
+}
+
+/**
  * A stored slay never expires on its own. It is only regenerated when
  * explicitly triggered: an admin re-slay (forceReslay), a user flagging a
  * label change, or (future) an external data-source update.
@@ -115,6 +131,8 @@ export async function slayProduct(
     brand: input.brand ?? null,
     category: input.category ?? null,
     subcategory: input.subcategory ?? null,
+    category_slug: categorySlugFor(input.category, input.subcategory),
+    brand_slug: brandSlugFor(input.brand),
     barcode: input.barcode ?? null,
     ingredients_raw: input.ingredientsRaw,
     is_organic: input.isOrganic ?? false,

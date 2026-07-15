@@ -39,6 +39,10 @@ create table if not exists public.products (
   brand text,
   category text,
   subcategory text,
+  -- URL slugs for the hierarchical route /products/[category]/[brand]/[slug].
+  -- category_slug prefers the more specific subcategory when present.
+  category_slug text,
+  brand_slug text,
   barcode text,
   ingredients_raw text,
   is_organic boolean not null default false,
@@ -57,6 +61,8 @@ create table if not exists public.products (
   slay_summary text,
   slay_content jsonb,
   deductions jsonb,
+  -- Optional per-serving nutrition snapshot (calories, protein, sugar, ...).
+  nutrition_data jsonb,
   status text not null default 'published'
     check (status in ('published', 'draft', 'pending-review', 'archived', 'flagged-for-review')),
   reviewed_at timestamptz,
@@ -71,6 +77,15 @@ create table if not exists public.products (
 
 -- name_raw was added after launch — for databases on the original schema.
 alter table public.products add column if not exists name_raw text;
+
+-- Hierarchical-URL slugs and nutrition snapshot, also added after launch.
+alter table public.products add column if not exists category_slug text;
+alter table public.products add column if not exists brand_slug text;
+alter table public.products add column if not exists nutrition_data jsonb;
+create index if not exists products_category_slug_idx
+  on public.products (category_slug);
+create index if not exists products_brand_slug_idx
+  on public.products (category_slug, brand_slug);
 
 -- 'flagged-for-review' was added after launch — recreate the status check so
 -- databases created from the original schema pick it up. (create table if not

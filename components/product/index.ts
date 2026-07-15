@@ -2,3 +2,8 @@ export * from "./score-ring";
 export * from "./verdict-badge";
 export * from "./slay-card";
 export * from "./swap-card";
+export * from "./breadcrumb";
+export * from "./processing-meter";
+export * from "./ingredient-list";
+export * from "./share-report";
+export * from "./nutrition-snapshot";

@@ -22,6 +22,8 @@ const MIN_SLAYED_BEFORE_EXTERNAL = 5;
 function toSlayed(product: ProductRow) {
   return {
     slug: product.slug,
+    category_slug: product.category_slug,
+    brand_slug: product.brand_slug,
     name: product.name,
     brand: product.brand,
     category: product.category,

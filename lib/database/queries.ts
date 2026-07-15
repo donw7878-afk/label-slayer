@@ -24,6 +24,10 @@ export interface ProductRow {
   brand: string | null;
   category: string | null;
   subcategory: string | null;
+  /** URL slug for /products/[category]/... — prefers subcategory when set. */
+  category_slug: string | null;
+  /** URL slug for /products/[category]/[brand]/... */
+  brand_slug: string | null;
   barcode: string | null;
   ingredients_raw: string | null;
   is_organic: boolean;
@@ -42,6 +46,8 @@ export interface ProductRow {
   slay_summary: string | null;
   slay_content: SlayContent | null;
   deductions: ScoreDeduction[] | null;
+  /** Optional per-serving nutrition snapshot (see NutritionData). */
+  nutrition_data: Record<string, number> | null;
   status:
     | "published"
     | "draft"
@@ -231,6 +237,94 @@ export async function searchProducts(
     .limit(limit);
   if (error) throw new Error(`searchProducts(${query}): ${error.message}`);
   return (data ?? []) as ProductRow[];
+}
+
+// --- Index-page fetchers ----------------------------------------------------
+
+const PUBLIC_STATUSES = ["published", "flagged-for-review"];
+
+export type ProductSort = "score-desc" | "score-asc" | "newest";
+
+/** Products for /products/[category], filtered and sorted for the index UI. */
+export async function getProductsForCategoryPage(
+  categorySlug: string,
+  options: { sort?: ProductSort; verdict?: string; limit?: number; offset?: number } = {},
+  client: SupabaseClient = getServerClient(),
+): Promise<ProductRow[]> {
+  const { sort = "score-desc", verdict, limit = 24, offset = 0 } = options;
+  let query = client
+    .from("products")
+    .select("*")
+    .eq("category_slug", categorySlug)
+    .in("status", PUBLIC_STATUSES)
+    .not("slay_content", "is", null);
+  if (verdict) query = query.eq("verdict", verdict);
+  query =
+    sort === "newest"
+      ? query.order("reviewed_at", { ascending: false, nullsFirst: false })
+      : query.order("score", { ascending: sort === "score-asc", nullsFirst: false });
+  const { data, error } = await query.range(offset, offset + limit - 1);
+  if (error) {
+    throw new Error(`getProductsForCategoryPage(${categorySlug}): ${error.message}`);
+  }
+  return (data ?? []) as ProductRow[];
+}
+
+/** Products for /products/[category]/[brand]. */
+export async function getProductsForBrandPage(
+  categorySlug: string,
+  brandSlug: string,
+  client: SupabaseClient = getServerClient(),
+): Promise<ProductRow[]> {
+  const { data, error } = await client
+    .from("products")
+    .select("*")
+    .eq("category_slug", categorySlug)
+    .eq("brand_slug", brandSlug)
+    .in("status", PUBLIC_STATUSES)
+    .not("slay_content", "is", null)
+    .order("score", { ascending: false, nullsFirst: false })
+    .limit(60);
+  if (error) {
+    throw new Error(
+      `getProductsForBrandPage(${categorySlug}/${brandSlug}): ${error.message}`,
+    );
+  }
+  return (data ?? []) as ProductRow[];
+}
+
+/** Recent / top / worst rails for the /products landing page. */
+export async function getProductRail(
+  rail: "recent" | "top" | "worst",
+  limit = 6,
+  client: SupabaseClient = getServerClient(),
+): Promise<ProductRow[]> {
+  let query = client
+    .from("products")
+    .select("*")
+    .in("status", PUBLIC_STATUSES)
+    .not("slay_content", "is", null)
+    .not("score", "is", null);
+  query =
+    rail === "recent"
+      ? query.order("reviewed_at", { ascending: false, nullsFirst: false })
+      : query.order("score", { ascending: rail === "worst", nullsFirst: false });
+  const { data, error } = await query.limit(limit);
+  if (error) throw new Error(`getProductRail(${rail}): ${error.message}`);
+  return (data ?? []) as ProductRow[];
+}
+
+/** "X products slayed and counting." */
+export async function getPublishedProductCount(
+  client: SupabaseClient = getServerClient(),
+): Promise<number> {
+  const { count, error } = await client
+    .from("products")
+    .select("*", { count: "exact", head: true })
+    .in("status", PUBLIC_STATUSES)
+    .not("slay_content", "is", null);
+  if (error) throw new Error(`getPublishedProductCount: ${error.message}`);
+  return count ?? 0;
 }
 
 export async function upsertProduct(

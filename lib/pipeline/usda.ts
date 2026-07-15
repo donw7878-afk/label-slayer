@@ -23,7 +23,10 @@ export interface UsdaFood {
   brandName?: string;
   ingredients?: string;
   gtinUpc?: string;
+  /** Present on /food/{id} detail responses. */
   brandedFoodCategory?: string;
+  /** Present on /foods/search responses (same value, different field name). */
+  foodCategory?: string;
   dataType?: string;
 }
 
@@ -117,8 +120,12 @@ export async function getUSDAProduct(fdcId: number): Promise<UsdaFood | null> {
 // Mapping to the pipeline's lookup shape
 // ---------------------------------------------------------------------------
 
+function usdaCategory(food: UsdaFood): string | undefined {
+  return food.brandedFoodCategory ?? food.foodCategory;
+}
+
 function inferIsOrganic(food: UsdaFood): boolean {
-  return [food.description, food.brandedFoodCategory]
+  return [food.description, usdaCategory(food)]
     .filter(Boolean)
     .some((text) => text!.toLowerCase().includes("organic"));
 }
@@ -141,7 +148,7 @@ export function mapUsdaFood(food: UsdaFood): ProductLookupResult | null {
     ingredients_raw: food.ingredients?.trim() || null,
     barcode: food.gtinUpc?.trim() || null,
     category: "food",
-    subcategory: food.brandedFoodCategory?.trim().toLowerCase() || null,
+    subcategory: usdaCategory(food)?.trim().toLowerCase() || null,
     imageUrl: null,
     source: "usda",
     sourceId: String(food.fdcId),
