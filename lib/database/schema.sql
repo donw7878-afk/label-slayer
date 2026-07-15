@@ -55,7 +55,7 @@ create table if not exists public.products (
   slay_content jsonb,
   deductions jsonb,
   status text not null default 'published'
-    check (status in ('published', 'draft', 'pending-review', 'archived')),
+    check (status in ('published', 'draft', 'pending-review', 'archived', 'flagged-for-review')),
   reviewed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -65,6 +65,13 @@ create table if not exists public.products (
     setweight(to_tsvector('english', coalesce(ingredients_raw, '')), 'C')
   ) stored
 );
+
+-- 'flagged-for-review' was added after launch — recreate the status check so
+-- databases created from the original schema pick it up. (create table if not
+-- exists won't touch an existing table.)
+alter table public.products drop constraint if exists products_status_check;
+alter table public.products add constraint products_status_check
+  check (status in ('published', 'draft', 'pending-review', 'archived', 'flagged-for-review'));
 
 -- barcode is unique but nullable — partial unique index instead of a column
 -- constraint so multiple barcode-less products can coexist.
@@ -149,10 +156,16 @@ create table if not exists public.product_submissions (
   image_url text,
   submitted_by text,
   status text not null default 'pending'
-    check (status in ('pending', 'approved', 'rejected', 'duplicate')),
+    check (status in ('pending', 'approved', 'rejected', 'duplicate', 'flagged-for-review')),
   notes text,
   created_at timestamptz not null default now()
 );
+
+-- 'flagged-for-review' rows record user "label changed" reports against
+-- existing products; recreate the check for databases on the original schema.
+alter table public.product_submissions drop constraint if exists product_submissions_status_check;
+alter table public.product_submissions add constraint product_submissions_status_check
+  check (status in ('pending', 'approved', 'rejected', 'duplicate', 'flagged-for-review'));
 
 create index if not exists product_submissions_status_idx
   on public.product_submissions (status);
@@ -189,11 +202,13 @@ alter table public.product_ingredients enable row level security;
 alter table public.product_submissions enable row level security;
 alter table public.clean_swaps enable row level security;
 
+-- Flagged products stay publicly readable: a "label changed" report queues an
+-- admin re-slay, it doesn't unpublish the product.
 drop policy if exists "public read published products" on public.products;
 create policy "public read published products"
   on public.products for select
   to anon, authenticated
-  using (status = 'published');
+  using (status in ('published', 'flagged-for-review'));
 
 drop policy if exists "public read ingredients" on public.ingredients;
 create policy "public read ingredients"

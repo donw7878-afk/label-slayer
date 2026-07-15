@@ -13,8 +13,8 @@
  * 5. Tests the user-submission flow (including duplicate detection).
  *
  * Costs real Anthropic API calls (one per non-cached product). Cached
- * products (<90 days old) are served from Supabase without an AI call, so
- * re-runs are cheap.
+ * products are always served from Supabase without an AI call (slays never
+ * expire by age), so re-runs are cheap.
  */
 
 import { runMigration, loadEnvLocal } from "../database/migrate";

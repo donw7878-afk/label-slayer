@@ -28,8 +28,6 @@ import {
 import { lookupByBarcode, searchByName } from "./lookup";
 import type { SlayProductInput, SlayResult } from "./types";
 
-const CACHE_FRESH_DAYS = 90;
-
 export function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -41,11 +39,13 @@ export function productSlug(name: string, brand?: string | null): string {
   return slugify([brand, name].filter(Boolean).join(" "));
 }
 
-function isFresh(product: ProductRow): boolean {
-  if (!product.slay_content || product.score === null) return false;
-  const stamped = product.reviewed_at ?? product.updated_at;
-  const ageMs = Date.now() - new Date(stamped).getTime();
-  return ageMs < CACHE_FRESH_DAYS * 24 * 60 * 60 * 1000;
+/**
+ * A stored slay never expires on its own. It is only regenerated when
+ * explicitly triggered: an admin re-slay (forceReslay), a user flagging a
+ * label change, or (future) an external data-source update.
+ */
+function hasStoredSlay(product: ProductRow): boolean {
+  return product.slay_content !== null && product.score !== null;
 }
 
 // ---------------------------------------------------------------------------
@@ -54,6 +54,7 @@ function isFresh(product: ProductRow): boolean {
 
 export async function slayProduct(
   input: SlayProductInput,
+  options: { forceReslay?: boolean } = {},
 ): Promise<{ product: ProductRow; slayContent: SlayContent; fromCache: boolean }> {
   const slug = productSlug(input.name, input.brand);
   console.log(`Pipeline: slaying "${input.name}" (${slug})`);
@@ -63,14 +64,18 @@ export async function slayProduct(
     (input.barcode ? await getProductByBarcode(input.barcode) : null) ??
     (await getProductBySlug(slug));
 
-  if (existing && isFresh(existing)) {
+  if (existing && hasStoredSlay(existing) && !options.forceReslay) {
     console.log(
       `Pipeline: cache hit — reviewed ${existing.reviewed_at ?? existing.updated_at}, returning stored slay`,
     );
     return { product: existing, slayContent: existing.slay_content!, fromCache: true };
   }
   if (existing) {
-    console.log("Pipeline: cached record is stale (>90 days) — re-scoring");
+    console.log(
+      options.forceReslay
+        ? "Pipeline: re-slay explicitly triggered — re-scoring"
+        : "Pipeline: cached record has no stored slay — scoring",
+    );
   }
 
   // --- 3. Score Engine (deterministic, free) --------------------------------

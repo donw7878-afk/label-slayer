@@ -40,7 +40,12 @@ export interface ProductRow {
   slay_summary: string | null;
   slay_content: SlayContent | null;
   deductions: ScoreDeduction[] | null;
-  status: "published" | "draft" | "pending-review" | "archived";
+  status:
+    | "published"
+    | "draft"
+    | "pending-review"
+    | "archived"
+    | "flagged-for-review";
   reviewed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -106,7 +111,7 @@ export interface ProductSubmissionRow {
   ingredients_raw: string | null;
   image_url: string | null;
   submitted_by: string | null;
-  status: "pending" | "approved" | "rejected" | "duplicate";
+  status: "pending" | "approved" | "rejected" | "duplicate" | "flagged-for-review";
   notes: string | null;
   created_at: string;
 }
@@ -146,6 +151,31 @@ export async function getProductBySlug(
   return data as ProductRow | null;
 }
 
+export async function getProductById(
+  id: string,
+  client: SupabaseClient = getServerClient(),
+): Promise<ProductRow | null> {
+  const { data, error } = await client
+    .from("products")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(`getProductById(${id}): ${error.message}`);
+  return data as ProductRow | null;
+}
+
+export async function updateProductStatus(
+  id: string,
+  status: ProductRow["status"],
+  client: SupabaseClient = getServerClient(),
+): Promise<void> {
+  const { error } = await client
+    .from("products")
+    .update({ status })
+    .eq("id", id);
+  if (error) throw new Error(`updateProductStatus(${id}): ${error.message}`);
+}
+
 export async function getProductByBarcode(
   barcode: string,
   client: SupabaseClient = getServerClient(),
@@ -171,7 +201,7 @@ export async function getProductsByCategory(
     .from("products")
     .select("*")
     .eq("category", category)
-    .eq("status", "published")
+    .in("status", ["published", "flagged-for-review"])
     .order("score", { ascending: true, nullsFirst: false })
     .range(offset, offset + limit - 1);
   if (error) {
@@ -189,7 +219,7 @@ export async function searchProducts(
     .from("products")
     .select("*")
     .textSearch("search_vector", query, { type: "websearch", config: "english" })
-    .eq("status", "published")
+    .in("status", ["published", "flagged-for-review"])
     .limit(limit);
   if (error) throw new Error(`searchProducts(${query}): ${error.message}`);
   return (data ?? []) as ProductRow[];
@@ -370,6 +400,39 @@ export async function findSubmissionByBarcode(
     throw new Error(`findSubmissionByBarcode(${barcode}): ${error.message}`);
   }
   return data as ProductSubmissionRow | null;
+}
+
+/** Recent user "label changed" reports awaiting an admin re-slay. */
+export async function getFlaggedSubmissions(
+  limit = 20,
+  client: SupabaseClient = getServerClient(),
+): Promise<ProductSubmissionRow[]> {
+  const { data, error } = await client
+    .from("product_submissions")
+    .select("*")
+    .eq("status", "flagged-for-review")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`getFlaggedSubmissions: ${error.message}`);
+  return (data ?? []) as ProductSubmissionRow[];
+}
+
+/**
+ * Marks a product's open "label changed" reports as approved — called after a
+ * re-slay so handled flags drop off the admin review list.
+ */
+export async function resolveFlaggedSubmissions(
+  product: Pick<ProductRow, "name" | "barcode">,
+  client: SupabaseClient = getServerClient(),
+): Promise<void> {
+  const query = client
+    .from("product_submissions")
+    .update({ status: "approved" })
+    .eq("status", "flagged-for-review");
+  const { error } = await (product.barcode
+    ? query.eq("barcode", product.barcode)
+    : query.eq("product_name", product.name));
+  if (error) throw new Error(`resolveFlaggedSubmissions: ${error.message}`);
 }
 
 // ---------------------------------------------------------------------------
